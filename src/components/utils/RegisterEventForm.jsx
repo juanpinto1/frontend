@@ -1,9 +1,9 @@
-import React, { useState, useContext } from "react";
+import React, { useState } from "react";
 import { Form, Button } from "react-bootstrap";
-import { MarketplaceContext } from "../utils/MarketplaceProvider";
+import useDeveloper from "../../hooks/useDeveloper";
 
 const RegisterEventForm = ({ event, onSave }) => {
-  const { userSession } = useContext(MarketplaceContext);
+  const { userSession } = useDeveloper();
   const [eventData, setEventData] = useState({
     title: event?.title || "",
     description: event?.description || "",
@@ -27,14 +27,14 @@ const RegisterEventForm = ({ event, onSave }) => {
 
     if (!userSession || !userSession.user_id) {
       console.error("User ID no está disponible.");
-      window.alert("No se pudo obtener el ID del usuario.");
+      window.alert("No se pudo obtener el ID del usuario. Por favor, inicie sesión nuevamente.");
       return;
     }
 
     try {
       await onSave({
         ...eventData,
-        user_id: userSession.user_id, // Incluye user_id en los datos del evento
+        user_id: userSession.user_id,
       });
       setEventData({
         title: "",
@@ -74,15 +74,15 @@ const RegisterEventForm = ({ event, onSave }) => {
         />
       </Form.Group>
       <Form.Group className="mb-3">
-        <Form.Label>Fecha</Form.Label>
-        <Form.Control
-          type="datetime-local"
-          name="date"
-          value={eventData.date}
-          onChange={handleChange}
-          required
-        />
-      </Form.Group>
+  <Form.Label>Fecha</Form.Label>
+  <Form.Control
+    type="datetime-local"
+    name="date"
+    value={eventData.date ? eventData.date.slice(0, 16) : ''} // Format for datetime-local input
+    onChange={handleChange}
+    required
+  />
+</Form.Group>
       <Form.Group className="mb-3">
         <Form.Label>Ubicación</Form.Label>
         <Form.Control

@@ -41,7 +41,7 @@ import { RouterGuard } from './components/utils/RouterGuard';
 
                 {/* Seccion Privada */}
                 <Route path="/profile/perfil" element={<RouterGuard isAllowed={userSession.isLoggedIn}><Profile /></RouterGuard>} />
-                <Route path="/profile/events" element={<RouterGuard isAllowed={userSession.isLoggedIn}><ManageEvents /></RouterGuard>} />{/*Ver mis eventos, publicar, editar o eliminar un evento*/}
+                <Route path="/events/mis-eventos" element={<RouterGuard isAllowed={userSession.isLoggedIn}><ManageEvents /></RouterGuard>} />{/*Ver mis eventos, publicar, editar o eliminar un evento*/}
                 <Route path="/profile/tickets" element={<RouterGuard isAllowed={userSession.isLoggedIn}><Tickets /></RouterGuard>} />{/*Ver mis tickets comprados*/}
                 <Route path="/profile/tickets/:ticketId" element={<RouterGuard isAllowed={userSession.isLoggedIn}><TicketDetail /></RouterGuard>} />{/*Ver el detalle de un ticket comprado*/}
                 <Route path="/profile/favorites" element={<RouterGuard isAllowed={userSession.isLoggedIn}><Favorites /></RouterGuard>} />{/*Ver mis favoritos y da posibilidad de eliminar un evento de favoritos*/}

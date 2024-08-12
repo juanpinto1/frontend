@@ -5,33 +5,39 @@ import MyNavbar from "../utils/MyNavbar";
 import MyFooter from "../utils/MyFooter";
 import RegisterEventForm from "../../components/utils/RegisterEventForm";
 import { ENDPOINT } from "../../config/constans";
+import useDeveloper from "../../hooks/useDeveloper";
 
-const ManageEvents = ({ userSession }) => {
+const ManageEvents = () => {
+  const { userSession } = useDeveloper();
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editEvent, setEditEvent] = useState({});
   const [eventList, setEventList] = useState([]);
-
-  // No necesitamos useContext para userSession si lo pasamos como prop
-  // const { deleteEvent } = useContext(MarketplaceContext);
 
   const fetchEvents = async () => {
     try {
       const token = localStorage.getItem('token');
       if (!token || !userSession?.user_id) return;
-  
-      const response = await axios.post(
-        `${ENDPOINT.misEventos}`,
-        { email: userSession.email },
+
+      const response = await axios.get(
+        `${ENDPOINT.eventos}/get-all`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      setEventList(response.data);
+      
+      if (response.data && Array.isArray(response.data.data)) {
+        setEventList(response.data.data);
+      } else {
+        console.log("Unexpected response format:", response.data);
+        setEventList([]);
+      }
     } catch (error) {
       console.error("Error al cargar eventos:", error);
+      setEventList([]);
     }
   };
+
   useEffect(() => {
     fetchEvents();
-  }, [userSession?.user_id]);
+  }, [userSession?.user_email]);
 
   const handleCreateNewEvent = () => {
     setEditEvent({});
@@ -51,21 +57,30 @@ const ManageEvents = ({ userSession }) => {
       const token = localStorage.getItem('token');
       if (!token || !userSession?.user_id) return;
   
-      const eventPayload = { ...eventData, user_id: userSession.user_id };
+      const eventPayload = {
+        user_id: userSession.user_id,
+        title: eventData.title,
+        description: eventData.description,
+        date: eventData.date,
+        location: eventData.location,
+        ticket_price: parseInt(eventData.ticket_price, 10),
+        tickets_available: parseInt(eventData.tickets_available, 10),
+        img_url: eventData.img_url || "linkpruebafoto"
+      };
   
       if (eventData.event_id) {
-        // Actualizar evento
+        // Update event
         await axios.put(`${ENDPOINT.eventos}/update/${eventData.event_id}`, eventPayload, {
           headers: { Authorization: `Bearer ${token}` }
         });
       } else {
-        // Crear nuevo evento
-        await axios.post(`${ENDPOINT.eventos}`, eventPayload, {
+        // Create new event
+        await axios.post(`${ENDPOINT.eventos}/add`, eventPayload, {
           headers: { Authorization: `Bearer ${token}` }
         });
       }
   
-      fetchEvents(); // Refrescar la lista de eventos
+      fetchEvents(); // Refresh the event list
     } catch (error) {
       console.error("Error al guardar evento:", error);
     }
@@ -93,64 +108,57 @@ const ManageEvents = ({ userSession }) => {
       <div className="container mt-5 flex-grow-1">
         <h1>Mis Eventos Publicados</h1>
         <h3>Ver mis eventos, publicar, editar o eliminar un evento</h3>
-        <p>ID de Usuario: {userSession?.user_id}</p> {/* Mostrar user_id aquí */}
+        {userSession && <p>ID de Usuario: {userSession.user_id}</p>}
+        
+        <Button variant="primary" className="mb-4" onClick={handleCreateNewEvent}>
+          Agregar nuevo evento
+        </Button>
+        
+        {showCreateForm && (
+          <RegisterEventForm event={editEvent} onSave={handleSave} />
+        )}
+        
         {eventList.length === 0 ? (
-          <>
-            <p>No tienes eventos creados.</p>
-            <Button variant="primary" onClick={handleCreateNewEvent}>
-              Agregar nuevo evento
-            </Button>
-            {showCreateForm && (
-              <RegisterEventForm event={editEvent} onSave={handleSave} />
-            )}
-          </>
+          <p>No hay eventos disponibles.</p>
         ) : (
-          <>
-            <Button variant="primary" className="mb-4" onClick={handleCreateNewEvent}>
-              Agregar nuevo evento
-            </Button>
-            {showCreateForm && (
-              <RegisterEventForm event={editEvent} onSave={handleSave} />
-            )}
-            <Row>
-              {eventList.map((event) => (
-                <Col key={event.event_id} md={4} className="mb-4">
-                  <Card>
-                    <Card.Img variant="top" src={event.imgUrl} />
-                    <Card.Body>
-                      <Card.Title>{event.title}</Card.Title>
-                      <Card.Text>{event.description}</Card.Text>
-                      <Card.Text>
-                        <strong>Fecha:</strong> {new Date(event.dateEvent).toLocaleDateString()}
-                      </Card.Text>
-                      <Card.Text>
-                        <strong>Ubicación:</strong> {event.location}
-                      </Card.Text>
-                      <Card.Text>
-                        <strong>Precio del Boleto:</strong> {event.ticketPrice} CLP
-                      </Card.Text>
-                      <Card.Text>
-                        <strong>Boletos Disponibles:</strong> {event.ticketsAvailable}
-                      </Card.Text>
-                      <Button
-                        variant="primary"
-                        className="me-2"
-                        onClick={() => handleEdit(event)}
-                      >
-                        Editar
-                      </Button>
-                      <Button
-                        variant="danger"
-                        onClick={() => deleteEvent(event.event_id)} // Asegúrate de manejar `deleteEvent` correctamente
-                      >
-                        Eliminar
-                      </Button>
-                    </Card.Body>
-                  </Card>
-                </Col>
-              ))}
-            </Row>
-          </>
+          <Row>
+            {eventList.map((event) => (
+              <Col key={event.event_id} md={4} className="mb-4">
+                <Card>
+                  <Card.Img variant="top" src={event.img_url} />
+                  <Card.Body>
+                    <Card.Title>{event.title}</Card.Title>
+                    <Card.Text>{event.description}</Card.Text>
+                    <Card.Text>
+                      <strong>Fecha:</strong> {new Date(event.date).toLocaleDateString()}
+                    </Card.Text>
+                    <Card.Text>
+                      <strong>Ubicación:</strong> {event.location}
+                    </Card.Text>
+                    <Card.Text>
+                      <strong>Precio del Boleto:</strong> {event.ticket_price} CLP
+                    </Card.Text>
+                    <Card.Text>
+                      <strong>Boletos Disponibles:</strong> {event.tickets_available}
+                    </Card.Text>
+                    <Button
+                      variant="primary"
+                      className="me-2"
+                      onClick={() => handleEdit(event)}
+                    >
+                      Editar
+                    </Button>
+                    <Button
+                      variant="danger"
+                      onClick={() => deleteEvent(event.event_id)}
+                    >
+                      Eliminar
+                    </Button>
+                  </Card.Body>
+                </Card>
+              </Col>
+            ))}
+          </Row>
         )}
       </div>
       <MyFooter />

@@ -31,7 +31,6 @@ export const MarketplaceProvider = ({ children }) => {
         setUserSession(JSON.parse(storedSession));
       }
     }
-    console.log(userSession)
   }, [token, userSession.isLoggedIn]);
 
   const isAuthenticated = () => userSession.isLoggedIn && token;

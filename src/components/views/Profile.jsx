@@ -205,7 +205,7 @@ const Profile = () => {
               </div>
             </div>
             <nav className="nav flex-column">
-            <Link to="/profile/events" className="nav-link">crear nuevo</Link>
+            <Link to="/events/mis-eventos" className="nav-link">crear nuevo</Link>
               <Link to="/events" className="nav-link">Eventos Disponibles</Link>
               <Link to="/profile/favorites" className="nav-link">Favoritos</Link>
               <Link to="/cart" className="nav-link">Carrito</Link>
