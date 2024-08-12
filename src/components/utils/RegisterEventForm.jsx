@@ -1,57 +1,58 @@
 import React, { useState, useContext } from "react";
 import { Form, Button } from "react-bootstrap";
-import axios from "axios";
 import { MarketplaceContext } from "../utils/MarketplaceProvider";
-import { ENDPOINT } from "../../config/constans";
 
-const RegisterEventForm = ({ onSave }) => {
+const RegisterEventForm = ({ event, onSave }) => {
   const { userSession } = useContext(MarketplaceContext);
   const [eventData, setEventData] = useState({
-    title: "",
-    description: "",
-    dateEvent: "",
-    location: "",
-    ticketPrice: 0,
-    imgUrl: "",
-    ticketsAvailable: 0,
+    title: event?.title || "",
+    description: event?.description || "",
+    date: event?.date || "",
+    location: event?.location || "",
+    ticket_price: event?.ticket_price || "",
+    tickets_available: event?.tickets_available || "",
+    img_url: event?.img_url || "",
   });
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setEventData({
-      ...eventData,
+    setEventData((prevData) => ({
+      ...prevData,
       [name]: value,
-    });
+    }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Hacer una llamada a la API para registrar el evento
-    axios.post(`${ENDPOINT}/api/profile/events/add`, eventData, {
-      headers: { Authorization: `Bearer ${userSession.token}` }
-    })
-    .then(response => {
-      // Actualizar el estado global si la llamada a la API es exitosa
-      onSave(response.data);
+
+    if (!userSession || !userSession.user_id) {
+      console.error("User ID no está disponible.");
+      window.alert("No se pudo obtener el ID del usuario.");
+      return;
+    }
+
+    try {
+      await onSave({
+        ...eventData,
+        user_id: userSession.user_id, // Incluye user_id en los datos del evento
+      });
       setEventData({
         title: "",
         description: "",
-        dateEvent: "",
+        date: "",
         location: "",
-        ticketPrice: 0,
-        imgUrl: "",
-        ticketsAvailable: 0,
+        ticket_price: "",
+        tickets_available: "",
+        img_url: "",
       });
-    })
-    .catch(error => {
-      console.error("Error al registrar el evento:", error);
-      // Puedes manejar el error mostrando un mensaje al usuario
-    });
+    } catch (error) {
+      console.error("Error al agregar evento:", error);
+      window.alert("Error al agregar evento");
+    }
   };
 
   return (
-    <Form onSubmit={handleSubmit} className="mb-4">
-      <h3>Registrar Nuevo Evento</h3>
+    <Form onSubmit={handleSubmit}>
       <Form.Group className="mb-3">
         <Form.Label>Título</Form.Label>
         <Form.Control
@@ -65,7 +66,7 @@ const RegisterEventForm = ({ onSave }) => {
       <Form.Group className="mb-3">
         <Form.Label>Descripción</Form.Label>
         <Form.Control
-          type="text"
+          as="textarea"
           name="description"
           value={eventData.description}
           onChange={handleChange}
@@ -73,11 +74,11 @@ const RegisterEventForm = ({ onSave }) => {
         />
       </Form.Group>
       <Form.Group className="mb-3">
-        <Form.Label>Fecha del Evento</Form.Label>
+        <Form.Label>Fecha</Form.Label>
         <Form.Control
-          type="date"
-          name="dateEvent"
-          value={eventData.dateEvent}
+          type="datetime-local"
+          name="date"
+          value={eventData.date}
           onChange={handleChange}
           required
         />
@@ -93,21 +94,11 @@ const RegisterEventForm = ({ onSave }) => {
         />
       </Form.Group>
       <Form.Group className="mb-3">
-        <Form.Label>Precio del Boleto</Form.Label>
+        <Form.Label>Precio del Boleto (CLP)</Form.Label>
         <Form.Control
           type="number"
-          name="ticketPrice"
-          value={eventData.ticketPrice}
-          onChange={handleChange}
-          required
-        />
-      </Form.Group>
-      <Form.Group className="mb-3">
-        <Form.Label>URL de la Imadasdagen</Form.Label>
-        <Form.Control
-          type="text"
-          name="imgUrl"
-          value={eventData.imgUrl}
+          name="ticket_price"
+          value={eventData.ticket_price}
           onChange={handleChange}
           required
         />
@@ -116,17 +107,27 @@ const RegisterEventForm = ({ onSave }) => {
         <Form.Label>Boletos Disponibles</Form.Label>
         <Form.Control
           type="number"
-          name="ticketsAvailable"
-          value={eventData.ticketsAvailable}
+          name="tickets_available"
+          value={eventData.tickets_available}
           onChange={handleChange}
           required
         />
       </Form.Group>
+      <Form.Group className="mb-3">
+        <Form.Label>URL de la Imagen</Form.Label>
+        <Form.Control
+          type="text"
+          name="img_url"
+          value={eventData.img_url}
+          onChange={handleChange}
+        />
+      </Form.Group>
       <Button variant="primary" type="submit">
-        Guardar Evento
+        {event?.event_id ? "Actualizar Evento" : "Agregar Evento"}
       </Button>
     </Form>
   );
 };
 
 export default RegisterEventForm;
+

@@ -37,6 +37,7 @@ const MyNavbar = () => {
     loadProfileImage();
   }, [userSession?.profile_picture]);
 
+
   if (isLoading) {
     return <div>Cargando...</div>;
   }

@@ -6,48 +6,42 @@ import { ENDPOINT } from "../../config/constans";
 export const MarketplaceContext = createContext();
 
 export const MarketplaceProvider = ({ children }) => {
-  const [userSession, setUserSession] = useState(
-    localStorage.getItem("session")
-      ? JSON.parse(localStorage.getItem("session"))
-      : {
-          isLoggedIn: false,
-          user_id: null,
-          username: "",
-          email: "",
-          profile_picture: "",
-          events: [],
-          favs: [],
-          cart: [],
-          tickets: [],
-        }
-  );
+  const [userSession, setUserSession] = useState(() => {
+    const sessionData = localStorage.getItem("session");
+    return sessionData ? JSON.parse(sessionData) : {
+      isLoggedIn: false,
+      user_id: null,
+      username: "",
+      email: "",
+      profile_picture: "",
+      events: [],
+      favs: [],
+      cart: [],
+      tickets: [],
+    };
+  });
+
   const [token, setToken] = useState(localStorage.getItem("token") || null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const storedSession = localStorage.getItem("session");
-    if (token && !userSession.isLoggedIn && storedSession) {
-      const sessionData = JSON.parse(storedSession);
-      setUserSession({
-        isLoggedIn: sessionData.isLoggedIn,
-        user_id: sessionData.user_id,
-        email: sessionData.email,
-        username: sessionData.username,
-        profile_picture: sessionData.profile_picture,
-        events: sessionData.events,
-        favs: sessionData.favs,
-        cart: sessionData.cart,
-        tickets: sessionData.tickets,
-      });
+    if (token && !userSession.isLoggedIn) {
+      const storedSession = localStorage.getItem("session");
+      if (storedSession) {
+        setUserSession(JSON.parse(storedSession));
+      }
     }
-  }, [token, userSession.isLoggedIn, navigate]);
+    console.log(userSession)
+  }, [token, userSession.isLoggedIn]);
+
+  const isAuthenticated = () => userSession.isLoggedIn && token;
 
   const logIn = async (email, password) => {
     try {
-      const response = await axios.post(`${ENDPOINT.login}`, { email, password });
+      const response = await axios.post(ENDPOINT.login, { email, password });
       const { token, user_id, username, profile_picture } = response.data;
 
-      setUserSession({
+      const sessionData = {
         isLoggedIn: true,
         user_id,
         email,
@@ -57,20 +51,11 @@ export const MarketplaceProvider = ({ children }) => {
         favs: [],
         cart: [],
         tickets: [],
-      });
+      };
 
+      setUserSession(sessionData);
       localStorage.setItem("token", token);
-      localStorage.setItem("session", JSON.stringify({
-        isLoggedIn: true,
-        user_id,
-        email,
-        username,
-        profile_picture,
-        events: [],
-        favs: [],
-        cart: [],
-        tickets: [],
-      }));
+      localStorage.setItem("session", JSON.stringify(sessionData));
 
       setToken(token);
       navigate("/profile/perfil");
@@ -99,16 +84,18 @@ export const MarketplaceProvider = ({ children }) => {
   };
 
   const updateProfile = async (updatedData) => {
+    if (!isAuthenticated()) return;
+
     try {
       await axios.put(
         `${ENDPOINT.perfil}/update/${userSession.user_id}`,
         updatedData,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      setUserSession({
-        ...userSession,
+      setUserSession(prevSession => ({
+        ...prevSession,
         ...updatedData,
-      });
+      }));
       localStorage.setItem("session", JSON.stringify({
         ...userSession,
         ...updatedData,
@@ -119,17 +106,16 @@ export const MarketplaceProvider = ({ children }) => {
   };
 
   const addEvent = async (event) => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token || !userSession.user_id) return;
+    if (!isAuthenticated()) return;
 
+    try {
       const response = await axios.post(
-        `${ENDPOINT.misEventos}/add`,
+        `${ENDPOINT.eventos}/add`,
         { ...event, user_id: userSession.user_id },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      setUserSession((prevSession) => ({
+      setUserSession(prevSession => ({
         ...prevSession,
         events: [...prevSession.events, response.data],
       }));
@@ -139,17 +125,16 @@ export const MarketplaceProvider = ({ children }) => {
   };
 
   const updateEvent = async (updatedEvent) => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) return;
+    if (!isAuthenticated()) return;
 
-      const response = await axios.put(`${ENDPOINT.misEventos}/${updatedEvent.id}`, updatedEvent, {
+    try {
+      const response = await axios.put(`${ENDPOINT.eventos}/update/${updatedEvent.id}`, updatedEvent, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      setUserSession((prevSession) => ({
+      setUserSession(prevSession => ({
         ...prevSession,
-        events: prevSession.events.map((event) =>
+        events: prevSession.events.map(event =>
           event.id === updatedEvent.id ? response.data : event
         ),
       }));
@@ -159,17 +144,16 @@ export const MarketplaceProvider = ({ children }) => {
   };
 
   const deleteEvent = async (eventId) => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) return;
+    if (!isAuthenticated()) return;
 
-      await axios.delete(`${ENDPOINT.misEventos}/${eventId}`, {
+    try {
+      await axios.delete(`${ENDPOINT.eventos}/delete/${eventId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      setUserSession((prevSession) => ({
+      setUserSession(prevSession => ({
         ...prevSession,
-        events: prevSession.events.filter((event) => event.id !== eventId),
+        events: prevSession.events.filter(event => event.id !== eventId),
       }));
     } catch (error) {
       console.error("Error al eliminar evento:", error);
@@ -177,15 +161,15 @@ export const MarketplaceProvider = ({ children }) => {
   };
 
   const addFav = (event) => {
-    setUserSession((prevSession) => {
+    setUserSession(prevSession => {
       const itemExists = prevSession.favs.find(
-        (item) => item.eventId === event.eventId
+        item => item.eventId === event.eventId
       );
       if (itemExists) {
         return {
           ...prevSession,
           favs: prevSession.favs.filter(
-            (item) => item.eventId !== event.eventId
+            item => item.eventId !== event.eventId
           ),
         };
       } else {
@@ -198,7 +182,7 @@ export const MarketplaceProvider = ({ children }) => {
   };
 
   const buyTickets = (cartItems) => {
-    setUserSession((prevSession) => ({
+    setUserSession(prevSession => ({
       ...prevSession,
       tickets: [...prevSession.tickets, ...cartItems],
       cart: [],
@@ -206,25 +190,25 @@ export const MarketplaceProvider = ({ children }) => {
   };
 
   const removeFromFavs = (eventId) => {
-    setUserSession((prevSession) => ({
+    setUserSession(prevSession => ({
       ...prevSession,
-      favs: prevSession.favs.filter((item) => item.eventId !== eventId),
+      favs: prevSession.favs.filter(item => item.eventId !== eventId),
     }));
   };
 
   const updateCart = (eventId, quantity) => {
-    setUserSession((prevSession) => ({
+    setUserSession(prevSession => ({
       ...prevSession,
-      cart: prevSession.cart.map((item) =>
+      cart: prevSession.cart.map(item =>
         item.eventId === eventId ? { ...item, quantity } : item
       ),
     }));
   };
 
   const removeFromCart = (eventId) => {
-    setUserSession((prevSession) => ({
+    setUserSession(prevSession => ({
       ...prevSession,
-      cart: prevSession.cart.filter((item) => item.eventId !== eventId),
+      cart: prevSession.cart.filter(item => item.eventId !== eventId),
     }));
   };
 
@@ -234,14 +218,14 @@ export const MarketplaceProvider = ({ children }) => {
         ? parseInt(event.ticketPrice.replace(/\D/g, ""), 10)
         : event.ticketPrice;
 
-    setUserSession((prevSession) => {
+    setUserSession(prevSession => {
       const itemExists = prevSession.cart.find(
-        (item) => item.eventId === event.eventId
+        item => item.eventId === event.eventId
       );
       if (itemExists) {
         return {
           ...prevSession,
-          cart: prevSession.cart.map((item) =>
+          cart: prevSession.cart.map(item =>
             item.eventId === event.eventId
               ? { ...item, quantity: item.quantity + 1 }
               : item

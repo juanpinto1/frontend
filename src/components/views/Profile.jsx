@@ -8,7 +8,6 @@ import { ENDPOINT } from "../../config/constans";
 import useDeveloper from "../../hooks/useDeveloper";
 
 
-
 const Profile = () => {
   const { userSession, setDeveloper } = useDeveloper();
   const { updateProfile, logOut } = useContext(MarketplaceContext);
@@ -22,39 +21,40 @@ const Profile = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const getDeveloperData = async () => {
-      const token = window.sessionStorage.getItem('token');
-
-      if (!token) {
-        navigate('/login');
-        return;
+    useEffect(() => {
+      const getDeveloperData = async () => {
+        const token = window.sessionStorage.getItem('token');
+    
+        if (!token) {
+          navigate('/login');
+          return;
+        }
+    
+        try {
+          const response = await axios.get(ENDPOINT.perfil, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          const user = response.data.user;
+          setDeveloper(user);
+          setFormData({
+            email: user.email,
+            username: user.username,
+            profile_picture: user.profile_picture
+          });
+          setIsLoading(false);
+        } catch (error) {
+          console.error('Error fetching developer data:', error);
+          window.sessionStorage.removeItem('token');
+          setDeveloper(null);
+          navigate('/');
+        }
+      };
+    
+      if (isLoading) {
+        getDeveloperData();
       }
-
-      try {
-        const response = await axios.get(ENDPOINT.perfil, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        const user = response.data.user;
-        setDeveloper(user);
-        setFormData({
-          email: user.email,
-          username: user.username,
-          profile_picture: user.profile_picture
-        });
-        setIsLoading(false);
-      } catch (error) {
-        console.error('Error fetching developer data:', error);
-        window.sessionStorage.removeItem('token');
-        setDeveloper(null);
-        navigate('/');
-      }
-    };
-
-    if (isLoading) {
-      getDeveloperData();
-    }
-  }, [navigate, setDeveloper, isLoading]);
+    }, [navigate, setDeveloper, isLoading]);
+    
 
   if (isLoading) {
     return <div>Cargando...</div>;
@@ -192,6 +192,7 @@ const Profile = () => {
                         Bienvenido <span className='fw-bold'>{userSession.username}</span>
                       </h1>
                     </div>
+                    <p>{userSession.user_id}</p>
                     <p>{userSession.email}</p>
                     <button className="btn btn-secondary" onClick={handleEdit}>
                       Editar Perfil
@@ -214,6 +215,7 @@ const Profile = () => {
         </div>
       </div>
       <MyFooter />
+
     </div>
   );
 };

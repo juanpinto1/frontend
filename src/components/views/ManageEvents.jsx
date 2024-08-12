@@ -1,35 +1,37 @@
-import React, { useContext, useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Button, Card, Row, Col } from "react-bootstrap";
 import axios from "axios";
-import { MarketplaceContext } from "../utils/MarketplaceProvider";
 import MyNavbar from "../utils/MyNavbar";
 import MyFooter from "../utils/MyFooter";
-import EventDetail from "./EventDetail";
+import RegisterEventForm from "../../components/utils/RegisterEventForm";
 import { ENDPOINT } from "../../config/constans";
 
-const ManageEvents = () => {
-  const { userSession, deleteEvent } = useContext(MarketplaceContext);
+const ManageEvents = ({ userSession }) => {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editEvent, setEditEvent] = useState({});
   const [eventList, setEventList] = useState([]);
 
+  // No necesitamos useContext para userSession si lo pasamos como prop
+  // const { deleteEvent } = useContext(MarketplaceContext);
+
   const fetchEvents = async () => {
     try {
       const token = localStorage.getItem('token');
-      if (!token || !userSession.user_id) return;
-      
-      const response = await axios.get(`${ENDPOINT.eventos}?user_id=${userSession.user_id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      if (!token || !userSession?.user_id) return;
+  
+      const response = await axios.post(
+        `${ENDPOINT.misEventos}`,
+        { email: userSession.email },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
       setEventList(response.data);
     } catch (error) {
       console.error("Error al cargar eventos:", error);
     }
   };
-
   useEffect(() => {
     fetchEvents();
-  }, [userSession.user_id]);
+  }, [userSession?.user_id]);
 
   const handleCreateNewEvent = () => {
     setEditEvent({});
@@ -44,39 +46,54 @@ const ManageEvents = () => {
   const handleSave = async (eventData) => {
     setShowCreateForm(false);
     setEditEvent({});
-
+  
     try {
       const token = localStorage.getItem('token');
-      if (!token || !userSession.user_id) return;
-
-      const { user_id } = userSession;
-      const eventPayload = { ...eventData, user_id }; // Incluye user_id en el payload
-
+      if (!token || !userSession?.user_id) return;
+  
+      const eventPayload = { ...eventData, user_id: userSession.user_id };
+  
       if (eventData.event_id) {
         // Actualizar evento
-        await axios.put(`${ENDPOINT.misEventos}/${eventData.event_id}`, eventPayload, {
+        await axios.put(`${ENDPOINT.eventos}/update/${eventData.event_id}`, eventPayload, {
           headers: { Authorization: `Bearer ${token}` }
         });
       } else {
         // Crear nuevo evento
-        await axios.post(ENDPOINT.misEventos, eventPayload, {
+        await axios.post(`${ENDPOINT.eventos}`, eventPayload, {
           headers: { Authorization: `Bearer ${token}` }
         });
       }
-
-      // Refrescar la lista de eventos
-      fetchEvents();
+  
+      fetchEvents(); // Refrescar la lista de eventos
     } catch (error) {
       console.error("Error al guardar evento:", error);
     }
   };
+  const deleteEvent = async (eventId) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+  
+      await axios.delete(`${ENDPOINT.eventos}/delete/${eventId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+  
+      setEventList((prevList) => prevList.filter(event => event.event_id !== eventId));
+    } catch (error) {
+      console.error("Error al eliminar evento:", error);
+    }
+  };
+  
 
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
       <MyNavbar />
+      
       <div className="container mt-5 flex-grow-1">
         <h1>Mis Eventos Publicados</h1>
         <h3>Ver mis eventos, publicar, editar o eliminar un evento</h3>
+        <p>ID de Usuario: {userSession?.user_id}</p> {/* Mostrar user_id aquí */}
         {eventList.length === 0 ? (
           <>
             <p>No tienes eventos creados.</p>
@@ -84,7 +101,7 @@ const ManageEvents = () => {
               Agregar nuevo evento
             </Button>
             {showCreateForm && (
-              <EventDetail event={editEvent} onSave={handleSave} />
+              <RegisterEventForm event={editEvent} onSave={handleSave} />
             )}
           </>
         ) : (
@@ -93,7 +110,7 @@ const ManageEvents = () => {
               Agregar nuevo evento
             </Button>
             {showCreateForm && (
-              <EventDetail event={editEvent} onSave={handleSave} />
+              <RegisterEventForm event={editEvent} onSave={handleSave} />
             )}
             <Row>
               {eventList.map((event) => (
@@ -124,7 +141,7 @@ const ManageEvents = () => {
                       </Button>
                       <Button
                         variant="danger"
-                        onClick={() => deleteEvent(event.event_id)}
+                        onClick={() => deleteEvent(event.event_id)} // Asegúrate de manejar `deleteEvent` correctamente
                       >
                         Eliminar
                       </Button>
