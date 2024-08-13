@@ -115,6 +115,7 @@ const ManageEvents = () => {
   };
 
   const handleSave = (eventData) => {
+  console.log("eventData.event_id:", eventData.event_id);
     if (eventData.event_id) {
       handleUpdateEvent(eventData);
     } else {
