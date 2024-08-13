@@ -35,6 +35,7 @@ const RegisterEventForm = ({ event, onSave }) => {
       await onSave({
         ...eventData,
         user_id: userSession.user_id,
+        event_id: event?.event_id,
       });
       setEventData({
         title: "",
