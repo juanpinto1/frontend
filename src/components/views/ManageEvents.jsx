@@ -10,7 +10,7 @@ import useDeveloper from "../../hooks/useDeveloper";
 const ManageEvents = () => {
   const { userSession } = useDeveloper();
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [editEvent, setEditEvent] = useState({});
+  const [editEvent, setEditEvent] = useState(null);
   const [eventList, setEventList] = useState([]);
 
   const fetchEvents = async () => {
@@ -18,8 +18,10 @@ const ManageEvents = () => {
       const token = localStorage.getItem('token');
       if (!token || !userSession?.user_id) return;
 
-      const response = await axios.get(
-        `${ENDPOINT.eventos}/get-all`,
+      // Cambiamos la ruta para obtener solo los eventos del usuario actual
+      const response = await axios.post(
+        `${ENDPOINT.eventos}/mis-eventos`,
+        { email: userSession.email },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       
@@ -36,11 +38,13 @@ const ManageEvents = () => {
   };
 
   useEffect(() => {
-    fetchEvents();
-  }, [userSession?.user_email]);
+    if (userSession?.user_id) {
+      fetchEvents();
+    }
+  }, [userSession?.user_id]);
 
   const handleCreateNewEvent = () => {
-    setEditEvent({});
+    setEditEvent(null);
     setShowCreateForm(true);
   };
 
@@ -51,8 +55,7 @@ const ManageEvents = () => {
 
   const handleSave = async (eventData) => {
     setShowCreateForm(false);
-    setEditEvent({});
-  
+    
     try {
       const token = localStorage.getItem('token');
       if (!token || !userSession?.user_id) return;
@@ -70,22 +73,27 @@ const ManageEvents = () => {
   
       if (eventData.event_id) {
         // Update event
-        await axios.put(`${ENDPOINT.eventos}/update/${eventData.event_id}`, eventPayload, {
+        const response = await axios.put(`${ENDPOINT.eventos}/update/${eventData.event_id}`, eventPayload, {
           headers: { Authorization: `Bearer ${token}` }
         });
+        setEventList(prevList => prevList.map(event => 
+          event.event_id === eventData.event_id ? response.data.data : event
+        ));
       } else {
         // Create new event
-        await axios.post(`${ENDPOINT.eventos}/add`, eventPayload, {
+        const response = await axios.post(`${ENDPOINT.eventos}/add`, eventPayload, {
           headers: { Authorization: `Bearer ${token}` }
         });
+        setEventList(prevList => [...prevList, response.data.data]);
       }
-  
-      fetchEvents(); // Refresh the event list
+      
+      setEditEvent(null);
     } catch (error) {
       console.error("Error al guardar evento:", error);
     }
   };
-  const deleteEvent = async (eventId) => {
+
+  const handleDelete = async (eventId) => {
     try {
       const token = localStorage.getItem('token');
       if (!token) return;
@@ -99,7 +107,6 @@ const ManageEvents = () => {
       console.error("Error al eliminar evento:", error);
     }
   };
-  
 
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
@@ -119,7 +126,7 @@ const ManageEvents = () => {
         )}
         
         {eventList.length === 0 ? (
-          <p>No hay eventos disponibles.</p>
+          <p>No has creado ningún evento aún.</p>
         ) : (
           <Row>
             {eventList.map((event) => (
@@ -150,7 +157,7 @@ const ManageEvents = () => {
                     </Button>
                     <Button
                       variant="danger"
-                      onClick={() => deleteEvent(event.event_id)}
+                      onClick={() => handleDelete(event.event_id)}
                     >
                       Eliminar
                     </Button>
@@ -160,6 +167,7 @@ const ManageEvents = () => {
             ))}
           </Row>
         )}
+        
       </div>
       <MyFooter />
     </div>
