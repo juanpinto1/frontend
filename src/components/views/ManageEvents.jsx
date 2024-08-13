@@ -18,7 +18,6 @@ const ManageEvents = () => {
       const token = localStorage.getItem('token');
       if (!token || !userSession?.user_id) return;
 
-      // Cambiamos la ruta para obtener solo los eventos del usuario actual
       const response = await axios.post(
         `${ENDPOINT.eventos}/mis-eventos`,
         { email: userSession.email },
@@ -53,13 +52,13 @@ const ManageEvents = () => {
     setShowCreateForm(true);
   };
 
-  const handleSave = async (eventData) => {
+  const handleCreateEvent = async (eventData) => {
     setShowCreateForm(false);
     
     try {
       const token = localStorage.getItem('token');
       if (!token || !userSession?.user_id) return;
-  
+
       const eventPayload = {
         user_id: userSession.user_id,
         title: eventData.title,
@@ -70,26 +69,56 @@ const ManageEvents = () => {
         tickets_available: parseInt(eventData.tickets_available, 10),
         img_url: eventData.img_url || "linkpruebafoto"
       };
-  
-      if (eventData.event_id) {
-        // Update event
-        const response = await axios.put(`${ENDPOINT.eventos}/update/${eventData.event_id}`, eventPayload, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setEventList(prevList => prevList.map(event => 
-          event.event_id === eventData.event_id ? response.data.data : event
-        ));
-      } else {
-        // Create new event
-        const response = await axios.post(`${ENDPOINT.eventos}/add`, eventPayload, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setEventList(prevList => [...prevList, response.data.data]);
-      }
-      
+
+      // Crear nuevo evento
+      const response = await axios.post(`${ENDPOINT.eventos}/add`, eventPayload, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      setEventList(prevList => [...prevList, response.data.data]);
       setEditEvent(null);
     } catch (error) {
-      console.error("Error al guardar evento:", error);
+      console.error("Error al crear evento:", error);
+    }
+  };
+
+  const handleUpdateEvent = async (eventData) => {
+    setShowCreateForm(false);
+    
+    try {
+      const token = localStorage.getItem('token');
+      if (!token || !userSession?.user_id) return;
+
+      const eventPayload = {
+        user_id: userSession.user_id,
+        title: eventData.title,
+        description: eventData.description,
+        date: eventData.date,
+        location: eventData.location,
+        ticket_price: parseInt(eventData.ticket_price, 10),
+        tickets_available: parseInt(eventData.tickets_available, 10),
+        img_url: eventData.img_url || "linkpruebafoto"
+      };
+
+      // Actualizar evento
+      const response = await axios.put(`${ENDPOINT.eventos}/update/${eventData.event_id}`, eventPayload, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      setEventList(prevList => prevList.map(event => 
+        event.event_id === eventData.event_id ? response.data.data : event
+      ));
+      setEditEvent(null);
+    } catch (error) {
+      console.error("Error al actualizar evento:", error);
+    }
+  };
+
+  const handleSave = (eventData) => {
+    if (eventData.event_id) {
+      handleUpdateEvent(eventData);
+    } else {
+      handleCreateEvent(eventData);
     }
   };
 
@@ -97,12 +126,12 @@ const ManageEvents = () => {
     try {
       const token = localStorage.getItem('token');
       if (!token) return;
-  
+
       await axios.delete(`${ENDPOINT.eventos}/delete/${eventId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-  
-      setEventList((prevList) => prevList.filter(event => event.event_id !== eventId));
+
+      setEventList(prevList => prevList.filter(event => event.event_id !== eventId));
     } catch (error) {
       console.error("Error al eliminar evento:", error);
     }
